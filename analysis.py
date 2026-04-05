@@ -138,8 +138,6 @@ def match_results_parallel(match_ids, region_route, api_key, max_workers=5):
     return [results_by_id[mid] for mid in match_ids]
 
 
-#Enemy Rank vs Player Rank
-
 TIER_VALUE = {
     "IRON": 0,
     "BRONZE": 1,
@@ -417,7 +415,6 @@ def games_played_modifier(games_played: int) -> float:
     else:
         return 1.0    # stable
 
-"-----------------------------------------------------------------------"
 
 def build_match_dataframe(player_match_data: list) -> pd.DataFrame:
     df = pd.DataFrame(player_match_data)
@@ -615,7 +612,7 @@ def expected_win_prob(winrate, games_played):
     return 0.5 * (1 - weight) + winrate * weight
 
 
-def sample_lp_delta(win, base_lp, streak):  #streaks are dead code for now
+def sample_lp_delta(win, base_lp, streak):  
     
     noise = np.random.normal(0, 6)  # for randomness sd
     # streak multiplier
@@ -757,7 +754,7 @@ def rank_movement_probabilities(
         "demotion": {}
     }
 
-    # ---- Promotions (touching higher divisions) ----
+    # Promotions (touching higher divisions)
     current_div = current_score // division_size
 
     for i in range(1, steps_up + 1):
@@ -765,7 +762,7 @@ def rank_movement_probabilities(
         prob = np.mean([np.max(path) >= target for path in all_futures])
         probs["promotion"][target] = prob
 
-    # ---- Demotions (touching lower divisions) ----
+    # Demotions (touching lower divisions)
     for i in range(1, steps_down + 1):
         target = (current_div - i) * division_size
         if target < 0:
@@ -784,7 +781,7 @@ def format_movement_probs(movement_probs):
                 "label": score_to_short_label(score),
                 "probability": float(prob)
             }
-            for score, prob in sorted(movement_probs["promotion"].items())  # <-- sorted low→high
+            for score, prob in sorted(movement_probs["promotion"].items())  # sorted low→high
         ],
         "demotion": [
             {
@@ -792,7 +789,7 @@ def format_movement_probs(movement_probs):
                 "label": score_to_short_label(score),
                 "probability": float(prob)
             }
-            for score, prob in sorted(movement_probs["demotion"].items(), reverse=True)  # <-- closest demotion first
+            for score, prob in sorted(movement_probs["demotion"].items(), reverse=True)  # closest demotion first
         ]
     }
 
@@ -802,7 +799,7 @@ def forecast_rank_progression(
     winrate,
     games_played,
     lp_changes,
-    current_lp,         # <-- add this so summarize can compute next division
+    current_lp,         # so summarize can compute next division
     games_ahead=20,
     sims=1000
 ):
@@ -847,7 +844,7 @@ def analyze_player(
     platform_route = PLATFORM_ROUTING[region]
     region_route = REGIONAL_ROUTING[region]
 
-    # ─── FETCH CORE DATA ──────────────────────────
+    # FETCH CORE DATA
     account = get_puuid(summoner_name, tag_line, region_route, api_key)
     puuid = account["puuid"]
 
@@ -855,20 +852,20 @@ def analyze_player(
     rank_data = get_rank(puuid, platform_route, api_key)
     matches = match_results_parallel(match_ids, region_route, api_key, max_workers=5)
 
-    # ─── PLAYER & ENEMY CONTEXT ───────────────────
+    # PLAYER & ENEMY CONTEXT
     player_match_data, enemy_puuids = extract_player_and_enemies(matches, puuid)
     enemy_rank_cache = fetch_enemy_ranks(enemy_puuids, platform_route, api_key)
 
-    # ─── SCORE COMPUTATION ────────────────────────
+    # SCORE COMPUTATION
     player_score = rank_to_score(rank_data["tier"], rank_data["rank"], rank_data["lp"])
     enemy_scores = compute_enemy_scores(enemy_rank_cache)
     avg_enemy = average_enemy_score(enemy_scores, player_score)
 
-    # ─── MATCH DATAFRAME + STATS ──────────────────
+    # MATCH DATAFRAME + STATS
     df = build_match_dataframe(player_match_data)
     stats = compute_longterm_stats(df)
 
-    # ─── LP HISTORY (PAST) ────────────────────────
+    # LP HISTORY
     lp_changes = simulate_lp_changes(
         df=df,
         player_score=player_score,
@@ -880,7 +877,7 @@ def analyze_player(
     rank_history_df = build_rank_score_df(df=df, player_score=player_score, lp_changes=lp_changes)
     rank_history_records = rank_history_df.to_dict("records")
 
-    # ─── FORECAST (FUTURE) ────────────────────────
+    # FORECAST
     forecast = forecast_rank_progression(
         player_score=player_score,
         winrate=stats["longterm_winrate"],
@@ -895,10 +892,10 @@ def analyze_player(
         "expected_score": float(forecast["expected_score"]),
         "confidence_25_75": [float(x) for x in forecast["confidence_25_75"]],
         "movement_probs": forecast["movement_probs"],
-        "plot": forecast["plot"]   # ✅ key addition
+        "plot": forecast["plot"]  
     }
 
-    # ─── FINAL RESPONSE ───────────────────────────
+    # FINAL RESPONSE
     return {
         "player_score": float(player_score),
         "avg_enemy_score": float(avg_enemy),

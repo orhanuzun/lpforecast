@@ -31,9 +31,9 @@ def _cache_key(region: str, summoner: str, tag: str) -> str:
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
-def _cache_paths(key: str):
-    os.makedirs(CACHE_DIR, exist_ok=True)          # <-- important
-    os.makedirs("static/plots", exist_ok=True)     # keep this too
+def _cache_paths(key: str):  #To make website run faster
+    os.makedirs(CACHE_DIR, exist_ok=True)          
+    os.makedirs("static/plots", exist_ok=True)     
     return os.path.join(CACHE_DIR, f"{key}.json")
 
 
@@ -54,8 +54,7 @@ def movement_summary_html(result: dict) -> str:
     promo_list = movement.get("promotion", [])
     demo_list  = movement.get("demotion", [])
 
-    # Current division label (use your existing function if accessible)
-    # We'll derive it from player_score (same as score_to_short_label)
+    # Current division label
     def score_to_short_label(score: int) -> str:
         tier_num = score // 400
         div_num = (score % 400) // 100
@@ -70,11 +69,11 @@ def movement_summary_html(result: dict) -> str:
     promo_prob = float(promo_list[0]["probability"]) if promo_list else 0.0
     promo_label = promo_list[0]["label"] if promo_list else None
 
-    # Closest demotion target = first (highest below current) demotion score (because we reverse-sorted)
+    # Closest demotion target = first (highest below current) demotion score
     demo_prob = float(demo_list[0]["probability"]) if demo_list else 0.0
     demo_label = demo_list[0]["label"] if demo_list else None
 
-    # "Stay" = not touching promotion AND not touching demotion (your definition)
+    # "Stay" = not touching promotion AND not touching demotion)
     stay_prob = max(0.0, 1.0 - promo_prob - demo_prob)
 
     lines = []
@@ -165,7 +164,7 @@ def view(region, summoner, tag):
     tag = unquote(tag)
 
     try:
-        # ── 0) Quick pre-checks (fast fail) ─────────────────────
+        # Quick pre-checks (fast fail)
         region_route = REGIONAL_ROUTING.get(region)
         platform_route = PLATFORM_ROUTING.get(region)
         if not region_route or not platform_route:
@@ -181,11 +180,11 @@ def view(region, summoner, tag):
         if not rank_data:
             return redirect("/unranked", code=302)
 
-        # pick SOLO/DUO entry if it exists
+        # pick SOLO/DUO entry (Other ranked match options will be added)
         rank_entry = next(
             (r for r in rank_data if r.get("queueType") == "RANKED_SOLO_5x5"),None)
 
-        # if they have no solo/duo rank, treat as unranked for your site
+        # if they have no solo/duo rank, treated as unranked
         if not rank_entry:
             return redirect("/unranked", code=302)
 
@@ -193,11 +192,11 @@ def view(region, summoner, tag):
         if tier in ("MASTER", "GRANDMASTER", "CHALLENGER"):
             return redirect("/unsupported", code=302)
 
-        # ── 1) Cache setup ─────────────────────────────────────
+        # Cache setup
         key = _cache_key(region, summoner, tag)
         cache_json_path = _cache_paths(key)
 
-        # ── 2) Serve cached if fresh ───────────────────────────
+        # Serve cached if fresh
         if _is_cache_valid(cache_json_path, CACHE_TTL_SECONDS):
             try:
                 with open(cache_json_path, "r", encoding="utf-8") as f:
@@ -240,7 +239,7 @@ def view(region, summoner, tag):
                         </html>
                     """
 
-        # ── 3) Compute fresh (heavy) ───────────────────────────
+        # Compute fresh
         result = analyze_player(
             summoner_name=summoner,
             tag_line=tag,
@@ -307,7 +306,7 @@ def view(region, summoner, tag):
         if "404" in msg or "DATA_NOT_FOUND" in msg or "not found" in msg.lower():
             return redirect("/notfound?msg=not_found", code=302)
 
-        # unranked-ish errors
+        # unranked errors
         if "NoneType" in msg and "subscriptable" in msg:
             return redirect("/unranked", code=302)
 

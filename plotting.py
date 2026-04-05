@@ -1,5 +1,3 @@
-#RIOT_API_KEY=RGAPI- cmd ye
-#cd C:\Users\Orhan\OneDrive\Masaüstü\Flask_f
 
 
 import os
